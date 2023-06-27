@@ -72,7 +72,7 @@ void DMA::b_transport(pl_t& pl, sc_time& offset)
 			while (remaining > 0)
             {
                 unsigned int read_length = min(10u, remaining);
-                pl.set_address(begin + tmp);
+                pl.set_address(0 + tmp);
                 pl.set_command(TLM_READ_COMMAND);
                 pl.set_data_length(read_length);
                 s_dma_i1->b_transport(pl, offset);
@@ -81,7 +81,7 @@ void DMA::b_transport(pl_t& pl, sc_time& offset)
                 buf = pl.get_data_ptr();
                 for (unsigned int i = 0; i < read_length; i++) {
         			pom_mem.push_back(((sc_dt::sc_uint<8>*)buf)[i]);
-   				 }
+   				}
 
                 tmp += read_length;
                 remaining -= read_length;

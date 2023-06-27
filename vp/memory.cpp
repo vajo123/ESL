@@ -1,4 +1,4 @@
-#ifndef MEM_C
+ #ifndef MEM_C
 #define MEM_C
 #include "memory.hpp"
 

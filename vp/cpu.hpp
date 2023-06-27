@@ -23,7 +23,9 @@ SC_MODULE(Cpu){
 		tlm_utils::simple_initiator_socket<Cpu> s_cp_i1;
 
 		sc_out<sc_dt::sc_logic> in_port0;
+		sc_out<sc_dt::sc_logic> in_port1;
 		sc_signal<sc_dt::sc_logic> sig0;
+		sc_signal<sc_dt::sc_logic> sig1;
 		
 
 	protected:
@@ -33,7 +35,8 @@ SC_MODULE(Cpu){
 		char* input_titl;
 
 		int command;
-		sc_dt::sc_logic tmp_sig;
+		sc_dt::sc_logic tmp_sig0;
+		sc_dt::sc_logic tmp_sig1;
 
 		void matToVector(const cv::Mat& );
 		cv::Mat vectorToMat(const vector<sc_dt::sc_uint<8>>& , int, int);

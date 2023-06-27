@@ -14,6 +14,13 @@
 #define D3_FRAME_SIZE 4320000
 #define D4_FRAME_SIZE 6220800
 
+#define D0_BRAM 117
+#define D1_BRAM 76
+#define D2_BRAM 55
+#define D3_BRAM 42
+#define D4_BRAM 34
+
+
 #define D0_WIDTH 640 
 #define D0_HEIGHT 360
 

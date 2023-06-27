@@ -10,7 +10,9 @@ Ip::Ip(sc_module_name name):sc_module(name)
 
 	command = 0;
 	len_text = 0;
-	tmp_sig = sc_dt::SC_LOGIC_0;
+	possitionY = 0;
+	tmp_sig0 = sc_dt::SC_LOGIC_0;
+	tmp_sig1 = sc_dt::SC_LOGIC_0;
 
 	base.reserve(1333*2000*3);
 	letterData.reserve(SIZE_LETTER_DATA);
@@ -24,13 +26,29 @@ void Ip::b_transport0(pl_t& pl, sc_time& offset)
 	sc_dt::uint64 adr  = pl.get_address();
 	const unsigned char *buf = pl.get_data_ptr();
 	unsigned int len  = pl.get_data_length();
-	len_text = len;
+
+	sc_dt::uint64 start = adr - 0x80000000;
 
 	switch(cmd)
 	{
 		case TLM_WRITE_COMMAND:
-			command = int(*buf);
-			pl.set_response_status(TLM_OK_RESPONSE);
+			switch(start)
+			{
+				case 0x00000001:
+					command = int(*buf);
+					pl.set_response_status(TLM_OK_RESPONSE);
+					break;
+				case 0x00000010:
+					len_text = int(*buf);
+					pl.set_response_status(TLM_OK_RESPONSE);
+					break;
+				case 0x00000100:
+					possitionY = int(*buf);
+					pl.set_response_status(TLM_OK_RESPONSE); 
+					break;
+				default:
+					pl.set_response_status( TLM_COMMAND_ERROR_RESPONSE );
+			}
 			break;
 		case TLM_READ_COMMAND:
 			break;
@@ -43,15 +61,13 @@ void Ip::b_transport0(pl_t& pl, sc_time& offset)
 void Ip::b_transport1(pl_t& pl, sc_time& offset)
 {
 	tlm_command cmd    = pl.get_command();
-  sc_dt::uint64 adr  = pl.get_address();
-  unsigned char *buf = pl.get_data_ptr();
-  unsigned int len   = pl.get_data_length();    
+  	sc_dt::uint64 adr  = pl.get_address();
+  	unsigned char *buf = pl.get_data_ptr();
+  	unsigned int len   = pl.get_data_length(); 
 
   switch(cmd)
   {
           case TLM_WRITE_COMMAND:
-                  //if(adr+len != ram.size())
-                  //        ram.resize(ram.size() - (ram.size()-adr)+len,0);
                   for(unsigned int i=0; i<len; i++)
                   {       
                           base[adr+i]=((sc_dt::sc_uint<8>*)buf)[adr+i];
@@ -103,18 +119,18 @@ void Ip::proc()
 			case 1:
 				
 				for (int i = 0; i < SIZE_LETTER_DATA; i++) {
-	        letterData.push_back(base[i]);
-			  }
-    			
-    		base.clear();
+			        letterData.push_back(base[i]);
+				}
+		    			
+		    	base.clear();
 				
 				#ifdef QUANTUM
-        qk.inc(sc_time(10, SC_NS));
-        offset = qk.get_local_time();
-        qk.set_and_sync(offset);
-        #else
-        offset += sc_time(10, SC_NS);
-        #endif
+		        qk.inc(sc_time(10, SC_NS));
+		        offset = qk.get_local_time();
+		        qk.set_and_sync(offset);
+		        #else
+		        offset += sc_time(10, SC_NS);
+		        #endif
 
 			break;
 
@@ -142,12 +158,12 @@ void Ip::proc()
 				base.clear();
 
 				#ifdef QUANTUM
-        qk.inc(sc_time(10, SC_NS));
-        offset = qk.get_local_time();
-        qk.set_and_sync(offset);
-        #else
-        offset += sc_time(10, SC_NS);
-        #endif
+		        qk.inc(sc_time(10, SC_NS));
+		        offset = qk.get_local_time();
+		        qk.set_and_sync(offset);
+		        #else
+		        offset += sc_time(10, SC_NS);
+		        #endif
 
 			break;
 
@@ -156,7 +172,7 @@ void Ip::proc()
 				text1.clear();
 				for (int i = 0; i < len_text; i++) {
 		    	if (base[i] == 255) 
-		        break;
+		        	break;
 			    text1.push_back(base[i]);
 				}
 				text2.clear();
@@ -164,57 +180,68 @@ void Ip::proc()
 					text2.push_back(base[i]);			
 				}
 
-    		base.clear(); 
+    			base.clear(); 
 				
 				#ifdef QUANTUM
-        qk.inc(sc_time(10, SC_NS));
-        offset = qk.get_local_time();
-        qk.set_and_sync(offset);
-        #else
-        offset += sc_time(10, SC_NS);
-        #endif
+		        qk.inc(sc_time(10, SC_NS));
+		        offset = qk.get_local_time();
+		        qk.set_and_sync(offset);
+		        #else
+		        offset += sc_time(10, SC_NS);
+		        #endif
 
 			break;
 
 			case 4:
+				tmp_sig0 = sc_dt::SC_LOGIC_0;
+	    		out_port0->write(tmp_sig0);
 
-				tmp_sig = sc_dt::SC_LOGIC_0;
-    		out_port0->write(tmp_sig);
-    		int frameWidth;
-    		int frameHeight;
+	    		tmp_sig1 = sc_dt::SC_LOGIC_0;
+	    		out_port1->write(tmp_sig1);
 
-    		array<int, 106> possition;
+	    		int frameWidth;
+	    		int frameHeight;
+	    		int bram_row;
 
-    		if(letterData[213] == 0){
-					possition = D0_possition;
-					frameWidth = D0_WIDTH;
-					frameHeight = D0_HEIGHT;
-    		}
+	    		array<int, 106> possition;
+
+	    		if(letterData[213] == 0){
+						possition = D0_possition;
+						frameWidth = D0_WIDTH;
+						frameHeight = D0_HEIGHT;
+						bram_row = D0_BRAM;
+	    		}
 				else if(letterData[213] == 1){
 					possition = D1_possition;
 					frameWidth = D1_WIDTH;
 					frameHeight = D1_HEIGHT;
+					bram_row = D1_BRAM;
 				}
 				else if(letterData[213] == 2){
 					possition = D2_possition;
 					frameWidth = D2_WIDTH;
 					frameHeight = D2_HEIGHT;
+					bram_row = D2_BRAM;
 				}
 				else if(letterData[213] == 3){
 					possition = D3_possition;
 					frameWidth = D3_WIDTH;
 					frameHeight = D3_HEIGHT;
+					bram_row = D3_BRAM;
 				}
 				else{
 					possition = D4_possition;
 					frameWidth = D4_WIDTH;
 					frameHeight = D4_HEIGHT;
+					bram_row = D4_BRAM;
 				}
 
-  			int y = letterData[212];
+  				int y = letterData[212];
 				int spacing = letterData[213] + 1;
 				int currX;
 				int currY;
+				int endCol = possitionY;
+	    		int startCol = endCol - bram_row;
 
 				vector<vector<sc_dt::sc_uint<8>>> rows;
 				rows = splitText(text1, text2, frameWidth);
@@ -225,44 +252,75 @@ void Ip::proc()
 					int pom = getStringWidth(rows[numRow - 1 - z], spacing);		
 					currX = (frameWidth - pom)/2;
 					currY = y/3 + z * (1.3 * y);
+
+					if(currY >= endCol)
+						continue;
+					else if(currY + y <= startCol)
+						continue;
 					
 					for (int k = 0; k < rows[numRow - 1 - z].size(); k++)
 					{	
 						char c = rows[numRow - 1 - z][k];   	
-	        	unsigned char uc = static_cast<unsigned char>(c);
+	        			unsigned char uc = static_cast<unsigned char>(c);
 						int ascii = static_cast<int>(uc);
 						int flag = 0;
 						int startPos;
 						sc_dt::sc_uint<8> letterWidth;
 						sc_dt::sc_uint<8> letterHeight;  
+						int tmp_currY;
+
+			        	startPos = possition[ascii];
+			        	letterWidth = letterData[ascii*2];
+			        	letterHeight = letterData[ascii*2+1];
+
+			    		if(ascii == 71 || ascii == 74 || ascii == 80 || ascii == 81 || ascii == 89)
+	        				tmp_currY = currY - (letterHeight / 4);
+	        			else
+	        				tmp_currY = currY;
+
+			        	if (ascii >= 106) {
+			        	    cout << "Greška: Nedostajuća matrica za slovo " << c << endl;
+			        	    ascii = 31;
+			        	}
+
+			        	int startY = 0;
+			        	int endY = letterHeight;
+
+			        	if(tmp_currY < 0){
+			        		if(tmp_currY + letterHeight > startCol && tmp_currY + letterHeight <= endCol)
+			        			endY = tmp_currY + letterHeight - startCol;
+			        		else if (tmp_currY + letterHeight > endCol){
+			        			startY = tmp_currY + letterHeight - endCol;
+			        			endY = tmp_currY + letterHeight - startCol;
+			        		}
+			        		else
+			        		{
+			        			currX += letterWidth + spacing;
+				        		continue;
+			        		}
+			        	}
+			        	else if(tmp_currY >= startCol){
+			        		if(tmp_currY + letterHeight > endCol)
+			        			startY = tmp_currY + letterHeight - endCol;
+			        	}
 
 
-			    	if(ascii == 71 || ascii == 74 || ascii == 80 || ascii == 81 || ascii == 89)
-	        		flag = 1;
-
-	        	if (ascii >= 106) {
-	        	    cout << "Greška: Nedostajuća matrica za slovo " << c << endl;
-	        	    ascii = 31;
-	        	}
-
-	        	startPos = possition[ascii];
-	        	letterWidth = letterData[ascii*2];
-	        	letterHeight = letterData[ascii*2+1];
-
-	 					for (int i = 0; i < letterHeight; i++) {
-	    				for (int j = 0; j < letterWidth; j++) {
-	    					int rowIndex = letterHeight - 1 - i;
-	    					if(letterMatrix[i * letterWidth + j + startPos] == 1){
-	    						int idx = ((frameHeight - 1 - currY + (flag * letterHeight / 4) - rowIndex) * frameWidth + (currX + j)) * 3;
-			            base[idx] = 255;    // Plava komponenta piksela
-			            base[idx + 1] = 255;  // Zelena komponenta piksela
-			            base[idx + 2] = 255;  // Crvena komponenta piksela
+	 					for (int i = startY; i < endY; i++) {
+    						int rowIndex = letterHeight - 1 - i;
+	    					for (int j = 0; j < letterWidth; j++) {
+	    						if(letterMatrix[i * letterWidth + j + startPos] == 1){
+	    							int idx = ((endCol - 1 - tmp_currY - rowIndex) * frameWidth + (currX + j)) * 3;
+			            			base[idx] = 255;    // Plava komponenta piksela
+			            			base[idx + 1] = 255;  // Zelena komponenta piksela
+			            			base[idx + 2] = 255;  // Crvena komponenta piksela
+	    						}
 	    					}
 	    				}
-	    			}
-	    			currX += letterWidth + spacing;
+	    				currX += letterWidth + spacing;
 					}
 				}
+
+				cout << "CURRY " << currY << endl;
 
 				#ifdef QUANTUM
 				qk.inc(sc_time(20, SC_NS));
@@ -271,8 +329,15 @@ void Ip::proc()
 				#else
 				offset += sc_time(20, SC_NS);
 				#endif
-				tmp_sig = sc_dt::SC_LOGIC_1;
-				out_port0->write(tmp_sig);
+
+				tmp_sig0 = sc_dt::SC_LOGIC_1;
+				out_port0->write(tmp_sig0);
+
+				if(currY + y <= endCol)
+				{
+					tmp_sig1 = sc_dt::SC_LOGIC_1;
+					out_port1->write(tmp_sig1);
+				}
 				
 			break;
 		}

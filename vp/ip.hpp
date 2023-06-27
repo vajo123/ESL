@@ -23,6 +23,7 @@ SC_MODULE(Ip)
 		tlm_utils::simple_target_socket<Ip> s_ip_t1;
 
 		sc_out<sc_dt::sc_logic> out_port0;
+		sc_out<sc_dt::sc_logic> out_port1;
 
 	protected:
 		void b_transport0(pl_t&, sc_time&);
@@ -36,10 +37,12 @@ SC_MODULE(Ip)
 		vector<sc_dt::sc_uint<8>> letterMatrix;
 		vector<sc_dt::sc_uint<8>> text1;
 		vector<sc_dt::sc_uint<8>> text2;
-		sc_dt::sc_logic tmp_sig;
+		sc_dt::sc_logic tmp_sig0;
+		sc_dt::sc_logic tmp_sig1;
 		
 		int command;
 		int len_text;
+		int possitionY;
 		vector<vector<sc_dt::sc_uint<8>>> splitText(const vector<sc_dt::sc_uint<8>>&, const vector<sc_dt::sc_uint<8>>&, int);
 
 };

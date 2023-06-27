@@ -25,6 +25,7 @@ int sc_main(int argc, char* argv[])
     Ip ip("ip");
 
     ip.out_port0(cpu.in_port0);
+    ip.out_port1(cpu.in_port1);
     cpu.s_cp_i1.bind(memory.s_mem_t1);
     cpu.s_cp_i0.bind(intcon.s_ic_t);
     intcon.s_ic_i1.bind(dma.s_dma_t);
@@ -38,7 +39,7 @@ int sc_main(int argc, char* argv[])
 
     cout<<"Starting simulation..."<<endl;
 
-    sc_start(10,SC_SEC);
+    sc_start(1,SC_SEC);
 
     cout << "Simulation finished at " << sc_time_stamp() <<endl;
 	
