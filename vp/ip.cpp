@@ -39,19 +39,21 @@ void Ip::b_transport0(pl_t& pl, sc_time& offset)
 					pl.set_response_status(TLM_OK_RESPONSE);
 					break;
 				case 0x00000010:
-					len_text = int(*buf);
+					len_text = *(int*)buf;
 					pl.set_response_status(TLM_OK_RESPONSE);
 					break;
 				case 0x00000100:
-					possitionY = int(*buf);
+					possitionY = *(int*)buf;
 					pl.set_response_status(TLM_OK_RESPONSE); 
 					break;
 				default:
 					pl.set_response_status( TLM_COMMAND_ERROR_RESPONSE );
 			}
 			break;
+
 		case TLM_READ_COMMAND:
 			break;
+
 		default:
 			pl.set_response_status( TLM_COMMAND_ERROR_RESPONSE );
 	}
@@ -65,35 +67,32 @@ void Ip::b_transport1(pl_t& pl, sc_time& offset)
   	unsigned char *buf = pl.get_data_ptr();
   	unsigned int len   = pl.get_data_length(); 
 
-  switch(cmd)
-  {
-          case TLM_WRITE_COMMAND:
-                  for(unsigned int i=0; i<len; i++)
-                  {       
-                          base[adr+i]=((sc_dt::sc_uint<8>*)buf)[adr+i];
-                  }
-                  pl.set_response_status(TLM_OK_RESPONSE);
-                  break;
+	switch(cmd)
+ 	{	
+	  	case TLM_WRITE_COMMAND:
+			for(unsigned int i=0; i<len; i++)
+			{       
+				base[adr+i]=((sc_dt::sc_uint<8>*)buf)[adr+i];
+			}
+			pl.set_response_status(TLM_OK_RESPONSE);
+			break;
 
+		case TLM_READ_COMMAND:
+  			buf = (unsigned char*)&base[adr];
+	      	pl.set_data_ptr(buf);
+	      	pl.set_response_status(TLM_OK_RESPONSE);
+	      	break;
 
-          case TLM_READ_COMMAND:
-                  buf = (unsigned char*)&base[adr];
-                  pl.set_data_ptr(buf);
-                  pl.set_response_status(TLM_OK_RESPONSE);
-                  break;
-          default:
-                  pl.set_response_status( TLM_COMMAND_ERROR_RESPONSE );
-  }
-  
-  offset += sc_time(10, SC_NS);
-
+	  	default:
+  			pl.set_response_status( TLM_COMMAND_ERROR_RESPONSE );
+	}  
+	offset += sc_time(10, SC_NS);
 }
 
 void Ip::proc()
 {	
-
-	sc_dt::sc_uint<8> fifo_read;
 	sc_time offset=SC_ZERO_TIME;
+
 	#ifdef QUANTUM
 	tlm_utils::tlm_quantumkeeper qk;
 	qk.reset();
@@ -103,7 +102,6 @@ void Ip::proc()
 	{
 		while(command == 0)
 		{
-			//cout << "ip: cekam komandu " << sc_time_stamp() <<endl;
 			#ifdef QUANTUM
 	        qk.inc(sc_time(10, SC_NS));
 	        offset = qk.get_local_time();
@@ -117,11 +115,9 @@ void Ip::proc()
 		switch(command)
 		{
 			case 1:
-				
 				for (int i = 0; i < SIZE_LETTER_DATA; i++) {
 			        letterData.push_back(base[i]);
-				}
-		    			
+				}		    			
 		    	base.clear();
 				
 				#ifdef QUANTUM
@@ -132,7 +128,7 @@ void Ip::proc()
 		        offset += sc_time(10, SC_NS);
 		        #endif
 
-			break;
+				break;
 
 			case 2:
 				unsigned int LEN_MATRIX;
@@ -154,7 +150,6 @@ void Ip::proc()
 				{
 					letterMatrix[i] = (sc_dt::sc_uint<1>)base[i];
 				}
-
 				base.clear();
 
 				#ifdef QUANTUM
@@ -165,21 +160,21 @@ void Ip::proc()
 		        offset += sc_time(10, SC_NS);
 		        #endif
 
-			break;
+				break;
 
 			case 3: 
 				
 				text1.clear();
 				for (int i = 0; i < len_text; i++) {
-		    	if (base[i] == 255) 
-		        	break;
-			    text1.push_back(base[i]);
+		    		if (base[i] == 255) 
+		        		break;
+			    	text1.push_back(base[i]);
 				}
 				text2.clear();
+
 				for (int i = text1.size() + 1; i < len_text; i++) {
 					text2.push_back(base[i]);			
 				}
-
     			base.clear(); 
 				
 				#ifdef QUANTUM
@@ -190,7 +185,7 @@ void Ip::proc()
 		        offset += sc_time(10, SC_NS);
 		        #endif
 
-			break;
+				break;
 
 			case 4:
 				tmp_sig0 = sc_dt::SC_LOGIC_0;
@@ -206,10 +201,10 @@ void Ip::proc()
 	    		array<int, 106> possition;
 
 	    		if(letterData[213] == 0){
-						possition = D0_possition;
-						frameWidth = D0_WIDTH;
-						frameHeight = D0_HEIGHT;
-						bram_row = D0_BRAM;
+					possition = D0_possition;
+					frameWidth = D0_WIDTH;
+					frameHeight = D0_HEIGHT;
+					bram_row = D0_BRAM;
 	    		}
 				else if(letterData[213] == 1){
 					possition = D1_possition;
@@ -287,8 +282,9 @@ void Ip::proc()
 			        	int endY = letterHeight;
 
 			        	if(tmp_currY < 0){
-			        		if(tmp_currY + letterHeight > startCol && tmp_currY + letterHeight <= endCol)
+			        		if(tmp_currY + letterHeight > startCol && tmp_currY + letterHeight <= endCol){
 			        			endY = tmp_currY + letterHeight - startCol;
+			        		}
 			        		else if (tmp_currY + letterHeight > endCol){
 			        			startY = tmp_currY + letterHeight - endCol;
 			        			endY = tmp_currY + letterHeight - startCol;
@@ -304,15 +300,27 @@ void Ip::proc()
 			        			startY = tmp_currY + letterHeight - endCol;
 			        	}
 
-
 	 					for (int i = startY; i < endY; i++) {
     						int rowIndex = letterHeight - 1 - i;
 	    					for (int j = 0; j < letterWidth; j++) {
+	    						
+	    						#ifdef QUANTUM
+								qk.inc(sc_time(10, SC_NS));
+								offset = qk.get_local_time();
+								qk.set_and_sync(offset);
+								#endif
+	    						
 	    						if(letterMatrix[i * letterWidth + j + startPos] == 1){
 	    							int idx = ((endCol - 1 - tmp_currY - rowIndex) * frameWidth + (currX + j)) * 3;
 			            			base[idx] = 255;    // Plava komponenta piksela
 			            			base[idx + 1] = 255;  // Zelena komponenta piksela
 			            			base[idx + 2] = 255;  // Crvena komponenta piksela
+	    							
+	    							#ifdef QUANTUM
+									qk.inc(sc_time(30, SC_NS));
+									offset = qk.get_local_time();
+									qk.set_and_sync(offset);
+									#endif
 	    						}
 	    					}
 	    				}
@@ -339,9 +347,9 @@ void Ip::proc()
 					out_port1->write(tmp_sig1);
 				}
 				
-			break;
+				break;
+			
 		}
-
 		command = 0;
 	}	
 
@@ -368,82 +376,86 @@ vector<vector<sc_dt::sc_uint<8>>> Ip::splitText(const vector<sc_dt::sc_uint<8>>&
 	int razmak = letterData[213] + 1;
 
 	vector<vector<sc_dt::sc_uint<8>>> result;
-  vector<sc_dt::sc_uint<8>> currentRow1, currentRow2;
-  int lenR1, lenR2;
-  int i = 0;
+  	vector<sc_dt::sc_uint<8>> currentRow1, currentRow2;
+  	int lenR1, lenR2;
+  	int i = 0;
 
-  while (i < text1.size()) {
-    int j = i;
-    while (j < text1.size() && text1[j] != 0) {
-        j++;
-    }
+  	while (i < text1.size()) {
+	    int j = i;
+	    while (j < text1.size() && text1[j] != 0) {
+	        j++;
+	    }
 
-    vector<sc_dt::sc_uint<8>> rijec1(text1.begin() + i, text1.begin() + j);
-    lenR1 = getStringWidth(rijec1, razmak);
-		
-    if (currentRow1.empty()) {
-        currentRow1 = rijec1;
-        rowLen1 = lenR1 ;
-    } else {
-        if (rowLen1 + lenR1 + space + razmak > photoWidth) {
-            result.push_back(currentRow1);
-            currentRow1 = rijec1;
-            rowLen1 = lenR1;
-        } else {
-            currentRow1.insert(currentRow1.end(), rijec1.begin(), rijec1.end());
-            rowLen1 += lenR1;
-        }
-    }
+	    vector<sc_dt::sc_uint<8>> rijec1(text1.begin() + i, text1.begin() + j);
+	    lenR1 = getStringWidth(rijec1, razmak);
+			
+	    if (currentRow1.empty()) {
+	        currentRow1 = rijec1;
+	        rowLen1 = lenR1 ;
+	    } 
+	    else {
+	        if (rowLen1 + lenR1 + space + razmak > photoWidth) {
+	            result.push_back(currentRow1);
+	            currentRow1 = rijec1;
+	            rowLen1 = lenR1;
+	        }
+	        else {
+	            currentRow1.insert(currentRow1.end(), rijec1.begin(), rijec1.end());
+	            rowLen1 += lenR1;
+	        }
+	    }
 
-    if (j < text1.size()) {
-        currentRow1.push_back(text1[j]);
-        rowLen1 += 2*razmak + space;
-    }
-    i = j + 1;
-  }
+	    if (j < text1.size()) {
+	        currentRow1.push_back(text1[j]);
+	        rowLen1 += 2*razmak + space;
+	    }
 
-  if (!currentRow1.empty()) {
-      result.push_back(currentRow1);
-  }
+	    i = j + 1;
+	}
 
-  int k = 0;
-  while (k < text2.size()) {
-    int j = k;
-    while (j < text2.size() && text2[j] != 0) {
-        j++;
-    }
+  	if (!currentRow1.empty()) {
+		result.push_back(currentRow1);
+  	}
 
-    vector<sc_dt::sc_uint<8>> rijec2(text2.begin() + k, text2.begin() + j);
-    lenR2 = getStringWidth(rijec2, razmak);
+	int k = 0;
+	while (k < text2.size()) {
+		int j = k;
+		while (j < text2.size() && text2[j] != 0) {
+		    j++;
+		}
 
-    if (currentRow2.empty()) {
-        currentRow2 = rijec2;
-        rowLen2 = lenR2 ;
-    } else {
-        if (rowLen2 + lenR2 + space + razmak > photoWidth) {
-            result.push_back(currentRow2);
-            currentRow2 = rijec2;
-            rowLen2 = lenR2;
-        } else {
-            currentRow2.insert(currentRow2.end(), rijec2.begin(), rijec2.end());
-            rowLen2 += lenR2;
-        }
-    }
+		vector<sc_dt::sc_uint<8>> rijec2(text2.begin() + k, text2.begin() + j);
+		lenR2 = getStringWidth(rijec2, razmak);
 
-    if (j < text2.size()) {
-        currentRow2.push_back(text2[j]);
-        rowLen2 += 2*razmak + space;
-    }
-    k = j + 1;
-  }
+		if (currentRow2.empty()) {
+		    currentRow2 = rijec2;
+		    rowLen2 = lenR2 ;
+		}
+		else {
+		    if (rowLen2 + lenR2 + space + razmak > photoWidth) {
+		        result.push_back(currentRow2);
+		        currentRow2 = rijec2;
+		        rowLen2 = lenR2;
+		    }
+		    else {
+		        currentRow2.insert(currentRow2.end(), rijec2.begin(), rijec2.end());
+		        rowLen2 += lenR2;
+		    }
+		}
 
-  if (!currentRow2.empty()) {
-      result.push_back(currentRow2);
-  }
+		if (j < text2.size()) {
+		    currentRow2.push_back(text2[j]);
+		    rowLen2 += 2*razmak + space;
+		}
 
-  return result;
+		k = j + 1;
+	}
 
+	if (!currentRow2.empty()) {
+	  result.push_back(currentRow2);
+	}
+
+	return result;
 }
-
 
 #endif // IP_C

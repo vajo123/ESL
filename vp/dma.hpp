@@ -22,10 +22,7 @@ SC_MODULE(DMA)
 
 	protected:
 			void b_transport(pl_t&, sc_time&);	
-
 			vector<sc_dt::sc_uint<8>> pom_mem;
-			sc_dt::sc_logic startSend;
-			sc_dt::sc_logic startRead;
 
 			tlm_command cmd;
 			sc_dt::uint64 adr;

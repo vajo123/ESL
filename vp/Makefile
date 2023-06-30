@@ -1,6 +1,3 @@
-# SystemC installation directory
-SYSTEMC_HOME=/usr/local/systemc
-
 # OpenCV flags
 OPENCV_LIBS=$(shell pkg-config --libs opencv4)
 OPENCV_CFLAGS=$(shell pkg-config --cflags opencv4)
@@ -9,10 +6,10 @@ OPENCV_CFLAGS=$(shell pkg-config --cflags opencv4)
 CC=g++
 
 # Compiler flags
-CFLAGS=-c -I$(SYSTEMC_HOME)/include $(OPENCV_CFLAGS)
+CFLAGS=-c $(OPENCV_CFLAGS)
 
 # Linker flags
-LDFLAGS=-L$(SYSTEMC_HOME)/lib-linux64 -lsystemc
+LDFLAGS=-lsystemc $(OPENCV_LIBS)
 
 # Source files
 SOURCES=main.cpp memory.cpp cpu.cpp intcon.cpp dma.cpp ip.cpp ../spec/readsrt.cpp
@@ -24,11 +21,11 @@ OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=main
 
 # Default target
-all: $(SOURCES) $(EXECUTABLE)
+all: $(EXECUTABLE)
 
 # Build target
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) $(OBJECTS) -o $@ $(LDFLAGS) $(OPENCV_LIBS)
+	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
 
 # Compile target
 .cpp.o:

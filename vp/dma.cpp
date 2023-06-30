@@ -5,9 +5,6 @@
 DMA::DMA(sc_module_name name):sc_module(name)
 {	
 	s_dma_t.register_b_transport(this, &DMA::b_transport);
-
-	startRead = sc_dt::SC_LOGIC_0;
-	startSend = sc_dt::SC_LOGIC_0;
 }
 
 void DMA::b_transport(pl_t& pl, sc_time& offset)
@@ -45,7 +42,7 @@ void DMA::b_transport(pl_t& pl, sc_time& offset)
 			// Slanje podataka u blokovima od 10
             while (remaining > 0)
             {
-                unsigned int send_length = min(10u, remaining);
+                unsigned int send_length = min(8u, remaining);
                 pl.set_address(tmp);
                 pl.set_command(TLM_WRITE_COMMAND);
                 pl.set_data_ptr(buf);
@@ -55,10 +52,7 @@ void DMA::b_transport(pl_t& pl, sc_time& offset)
 
                 tmp += send_length;
                 remaining -= send_length;
-            }
-
-			//sent to hw 
-			startSend = sc_dt::SC_LOGIC_1;		 	
+            }	 	
 
 			pl.set_response_status( TLM_OK_RESPONSE );
 			offset += sc_time(20, SC_NS);
@@ -71,8 +65,8 @@ void DMA::b_transport(pl_t& pl, sc_time& offset)
 
 			while (remaining > 0)
             {
-                unsigned int read_length = min(10u, remaining);
-                pl.set_address(0 + tmp);
+                unsigned int read_length = min(8u, remaining);
+                pl.set_address(tmp);
                 pl.set_command(TLM_READ_COMMAND);
                 pl.set_data_length(read_length);
                 s_dma_i1->b_transport(pl, offset);
@@ -97,7 +91,6 @@ void DMA::b_transport(pl_t& pl, sc_time& offset)
 			s_dma_i0->b_transport(pl, offset);
 			assert(pl.get_response_status() == TLM_OK_RESPONSE);
 
-			startRead = sc_dt::SC_LOGIC_1;
 			offset += sc_time(20, SC_NS);
 			break;
 

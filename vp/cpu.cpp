@@ -10,7 +10,7 @@ Cpu::Cpu(sc_module_name name, char* input_video, char* input_titl):sc_module(nam
 	sig0 = sc_dt::SC_LOGIC_0;
 	sig1 = sc_dt::SC_LOGIC_0;
 	command = 0;
-
+	
 	cout << "Cpu constucted" << endl;
 }
 
@@ -19,6 +19,9 @@ void Cpu::sof()
 	unsigned char *buf;
   	unsigned int LEN_MATRIX;
 	unsigned int LEN_FRAME;
+	sc_time start_time;
+	sc_time end_time;
+	sc_time transaction_time;
 
 	// Učitaj video datoteku
     VideoCapture cap(input_video);
@@ -34,22 +37,15 @@ void Cpu::sof()
     vector<string> text2 = Srb.getText2();
 
     int max_index = startTime.size();
-
-    // Get the frame rate
-    int fps = cap.get(CAP_PROP_FPS);
-    
+    int fps = cap.get(CAP_PROP_FPS);    
     int delay = 1000 / fps;
-
     int current_subtitle_index = 0;
-
     int frame_count = 0;
-    
     bool pom = true;
-    
     bool pause = false;
-
 	int width_frame = int(cap.get(CAP_PROP_FRAME_WIDTH));
     int height_frame = int(cap.get(CAP_PROP_FRAME_HEIGHT));
+   
     int dimension;
     int bram_row;
 
@@ -116,34 +112,32 @@ void Cpu::sof()
 	#else
 	offset += sc_time(CLK_PERIOD, SC_NS);
 	#endif 
-//***********************************************************************************
+
+	//***********************************************************************************
+	
+	//Slanje letterData u kome se nalaze informacije o slovima u BRAM(letterData)
+	
 	ddr.clear();
 	ddr = letterData;
 
-	cout << "cpu: offset, pre slanja mem, letterData: " << offset << endl;
-	cout << "cpu: time, pre slanja mem, letterData: " << sc_time_stamp() << endl;
+	cout << "cpu: time pre slanja letterData u memory " << sc_time_stamp() << endl;
 
 	buf=(unsigned char*)&ddr[0];
-	//offset = SC_ZERO_TIME;
+	
 	pl.set_address(0);
 	pl.set_data_length(SIZE_LETTER_DATA);
 	pl.set_command(TLM_WRITE_COMMAND);
 	pl.set_data_ptr(buf);
 	s_cp_i1->b_transport(pl, offset);
 	assert(pl.get_response_status() == TLM_OK_RESPONSE);
-
-	#ifdef QUANTUM
 	qk.set_and_sync(offset);
-	#endif
 
-	cout << "cpu: offset, posle slanja mem: " << offset << endl;
-	cout << "cpu: time, posle slanja mem: " << sc_time_stamp() << endl;		
+	cout << "cpu: time posle slanja letterData u memory: " << sc_time_stamp() << endl;		
 	
 	ddr.clear();
 
-	//offset = SC_ZERO_TIME;
-
-	//slanje iz mem preko dma u ip podatke
+	//Slanje letterData iz memory preko dma u ip(BRAM)
+	
 	pl.set_address(0x81000000);
 	pl.set_data_length(SIZE_LETTER_DATA);
 	pl.set_command(TLM_WRITE_COMMAND);
@@ -151,8 +145,6 @@ void Cpu::sof()
 	assert(pl.get_response_status() == TLM_OK_RESPONSE);
 	qk.set_and_sync(offset);
 
-	cout << "cpu: offset, posle slanja iz mem u ip: " << offset << endl;
-	cout << "cpu: time, posle slanja iz mem u ip: " << sc_time_stamp() << endl;
 
 	#ifdef QUANTUM
 	qk.inc(sc_time(CLK_PERIOD, SC_NS));
@@ -162,10 +154,9 @@ void Cpu::sof()
 	offset += sc_time(CLK_PERIOD, SC_NS);
 	#endif
 
-	//offset = SC_ZERO_TIME;
+	cout << "cpu: time posle letterData iz memory u ip: " << sc_time_stamp() << endl;	
 
-	cout << "cpu: offset, posle slanja iz mem u ip: " << offset << endl;
-	cout << "cpu: time, posle slanja iz mem u ip: " << sc_time_stamp() << endl;
+	//Slanje komande da se letterData koji je poslat iz memory smesti u BRAM letterData
 	
 	command = 1;
 	buf = (unsigned char*)&command;
@@ -185,13 +176,11 @@ void Cpu::sof()
 	#else
 	offset += sc_time(CLK_PERIOD, SC_NS);
 	#endif
+	
+	cout << "cpu: time posle skladistenja letterData u BRAM: " << sc_time_stamp() << endl;
 
-	//offset = SC_ZERO_TIME;
-
-	cout << "cpu: offset, posle skladistenja u ip: " << offset << endl;
-	cout << "cpu: time, posle skladistenja u ip: " << sc_time_stamp() << endl;
-
-//**************************************************************************************
+	//**************************************************************************************
+	//Slanje matrica slova letterMatrix u BRAM
 
 	ddr.clear();
 	for (const auto& value : transformedArray) {
@@ -199,8 +188,7 @@ void Cpu::sof()
     	ddr.push_back(convertedValue); // Dodavanje konvertovane vrednosti u vektor 'vecUint8'
 	}
 
-	cout << "cpu: offset, pre slanja mem, letterData: " << offset << endl;
-	cout << "cpu: time, pre slanja mem, letterData: " << sc_time_stamp() << endl;
+	cout << "cpu: time pre slanja letterMatrix u memory: " << sc_time_stamp() << endl;
 
 	buf=(unsigned char*)&ddr[0];
 	//offset = SC_ZERO_TIME;
@@ -210,28 +198,19 @@ void Cpu::sof()
 	pl.set_data_ptr(buf);
 	s_cp_i1->b_transport(pl, offset);
 	assert(pl.get_response_status() == TLM_OK_RESPONSE);
-
-	#ifdef QUANTUM
 	qk.set_and_sync(offset);
-	#endif
 
-	cout << "cpu: offset, posle slanja mem: " << offset << endl;
-	cout << "cpu: time, posle slanja mem: " << sc_time_stamp() << endl;		
+	cout << "cpu: time posle slanja letterMatrix u memory: " << sc_time_stamp() << endl;		
 	
 	ddr.clear();
 
-	//offset = SC_ZERO_TIME;
-
-	//slanje iz mem preko dma u ip podatke
+	//Slanje letterMatrix iz memory preko DMA u ip
 	pl.set_address(0x81000000);
 	pl.set_data_length(LEN_MATRIX);
 	pl.set_command(TLM_WRITE_COMMAND);
 	s_cp_i0->b_transport(pl, offset);
 	assert(pl.get_response_status() == TLM_OK_RESPONSE);
 	qk.set_and_sync(offset);
-
-	cout << "cpu: offset, posle slanja iz mem u ip: " << offset << endl;
-	cout << "cpu: time, posle slanja iz mem u ip: " << sc_time_stamp() << endl;
 
 	#ifdef QUANTUM
 	qk.inc(sc_time(CLK_PERIOD, SC_NS));
@@ -241,11 +220,8 @@ void Cpu::sof()
 	offset += sc_time(CLK_PERIOD, SC_NS);
 	#endif
 
-	//offset = SC_ZERO_TIME;
+	cout << "cpu: time posle slanja letterMatrix iz mem u ip: " << sc_time_stamp() << endl;
 
-	cout << "cpu: offset, posle slanja iz mem u ip: " << offset << endl;
-	cout << "cpu: time, posle slanja iz mem u ip: " << sc_time_stamp() << endl;
-	
 	command = 2;
 	buf = (unsigned char*)&command;
 
@@ -265,49 +241,49 @@ void Cpu::sof()
 	offset += sc_time(CLK_PERIOD, SC_NS);
 	#endif
 
-	//offset = SC_ZERO_TIME;
+	cout << "cpu: time, posle skladistenja letterMatrix u BRAM: " << sc_time_stamp() << endl;
 
-	cout << "cpu: offset, posle skladistenja u ip: " << offset << endl;
-	cout << "cpu: time, posle skladistenja u ip: " << sc_time_stamp() << endl;
-
-//*********************************************************************************************
-	// od ovog mesta se salje slika
+	//*********************************************************************************************
+	//Ucitavamo sliku i vrsimo modifikacu sliku u slucaju da je potrebno 
 
 	Mat slika;
 	bool send_text = true;
 	while(cap.read(slika))
 	{
-
 		// Pokušaj dohvatiti trenutno vrijeme u video datoteci     
         int current_time = cap.get(CAP_PROP_POS_MSEC);
-		
+
 		//convert Mat to vector<sc_uint<8>> and added to ddr
 		matToVector(slika);
 		
-		//Transfer image to Memory
+		start_time = sc_time_stamp();
+
+		//Saljemo frame u memory
 		buf=(unsigned char*)&ddr[0];
 
-		//offset = SC_ZERO_TIME;
 		pl.set_address(0);
 		pl.set_data_length(LEN_FRAME);
 		pl.set_command(TLM_WRITE_COMMAND);
 		pl.set_data_ptr(buf);
 		s_cp_i1->b_transport(pl, offset);
 		assert(pl.get_response_status() == TLM_OK_RESPONSE);
-
-		#ifdef QUANTUM
 		qk.set_and_sync(offset);
+				
+		#ifdef QUANTUM
+		qk.inc(sc_time(CLK_PERIOD, SC_NS));
+		offset = qk.get_local_time();
+		qk.set_and_sync(offset);
+		#else
+		offset += sc_time(CLK_PERIOD, SC_NS);
 		#endif
 
-		//cout << "cpu: offset, posle slanja mem: " << offset << endl;
-		//cout << "cpu: time, posle slanja mem: " << sc_time_stamp() << endl;		
-		
 		ddr.clear();
 
-		//offset = SC_ZERO_TIME;
+		cout << "cpu: time posle slanja frejma u memory " << sc_time_stamp() << endl;	
+		
+		//****************************************************************************
+		//Slanje stringa koji treba da se ispise na slici, ako je to potrebno
 
-	//**********************************************************************
-		//slanje stringa u mem
 		if (current_subtitle_index < max_index && current_time >= startTime[current_subtitle_index]) {
 			if(send_text){
 				cout << "SLANJEEE STRINGA " << endl;
@@ -321,28 +297,25 @@ void Cpu::sof()
 			  	stringToVector(st2,ddr);
 			  	
 				unsigned int strLen = ddr.size();
-			  	
+			  	 
+				cout << "cpu: time pre slanja stinga u memory: " << sc_time_stamp() << endl;
+
 			  	//Transfer string to Memory
 				buf=(unsigned char*)&ddr[0];
 
-				//offset = SC_ZERO_TIME;
 				pl.set_address(LEN_FRAME);
 				pl.set_data_length(strLen);
 				pl.set_command(TLM_WRITE_COMMAND);
 				pl.set_data_ptr(buf);
 				s_cp_i1->b_transport(pl, offset);
 				assert(pl.get_response_status() == TLM_OK_RESPONSE);
-
-				#ifdef QUANTUM
 				qk.set_and_sync(offset);
-				#endif
-
-				//cout << "cpu: offset, posle slanja mem: " << offset << endl;
-				//cout << "cpu: time, posle slanja mem: " << sc_time_stamp() << endl;		
 				
+				cout << "cpu: time posle slanja stinga u memory: " << sc_time_stamp() << endl;
+
 				ddr.clear();
 
-				//slanje iz mem preko dma u ip podatke
+				//Slanje stringa iz memory u ip
 				pl.set_address(0x81000000 + LEN_FRAME);
 				pl.set_data_length(strLen);
 				pl.set_command(TLM_WRITE_COMMAND);
@@ -358,11 +331,9 @@ void Cpu::sof()
 				offset += sc_time(CLK_PERIOD, SC_NS);
 				#endif
 
-				//offset = SC_ZERO_TIME;
+				cout << "cpu: time posle slanja stinga iz memory u ip: " << sc_time_stamp() << endl;
 
-				//cout << "cpu: offset, posle slanja iz mem u ip: " << offset << endl;
-				//cout << "cpu: time, posle slanja iz mem u ip: " << sc_time_stamp() << endl;
-
+				//Slanje informacije o duzini stringa u ip
 				buf = (unsigned char*)&strLen;
 
 				pl.set_address(0x80000010);
@@ -382,6 +353,7 @@ void Cpu::sof()
 				#endif
 
 
+				//Slanje komande za smestanje stringa u odgovarajuci bram
 				command = 3;
 				buf = (unsigned char*)&command;
 
@@ -401,25 +373,23 @@ void Cpu::sof()
 				offset += sc_time(CLK_PERIOD, SC_NS);
 				#endif
 
-				//offset = SC_ZERO_TIME;
-
-				//cout << "cpu: offset, posle skladistenja u ip: " << offset << endl;	
-				//cout << "cpu: time, posle skladistenja u ip: " << sc_time_stamp() << endl;
+				cout << "cpu: time posle skladistenja stinga u BRAM: " << sc_time_stamp() << endl;
 			}
 
+			// ********************************************************************************************
+			//Slanje delova slike sve dok se ne ispise celi text na sliku
 
-			// ************************************************************
-			cout << "\tOBRADA SLIKE " << endl;
-			//slanje iz mem preko dma u ip podatke
+			cout << "OBRADA SLIKE" << endl;
 
 			int adress_row;
-			int tmp = 1;
+			int tmp_pic = 1;
 			do
 			{	
-				adress_row = height_frame - bram_row * tmp;
+				adress_row = height_frame - bram_row * tmp_pic;
 				if(adress_row < 0)
 					adress_row = 0;
 
+				//Saljemo dio slike u BRAM
 				pl.set_address(0x81000000 + adress_row * width_frame * 3);
 				pl.set_data_length(bram_row * width_frame * 3);
 				pl.set_command(TLM_WRITE_COMMAND);
@@ -435,8 +405,10 @@ void Cpu::sof()
 				offset += sc_time(CLK_PERIOD, SC_NS);
 				#endif
 
-				int pomocna = height_frame - adress_row;
-				buf = (unsigned char*)&pomocna;
+				//Saljemo informaciju o kordinati y koja se odnosi na poslednji red slike koji je poslat
+				int tmp_y = height_frame - adress_row;
+
+				buf = (unsigned char*)&tmp_y;
 
 				pl.set_address(0x80000100);
 				pl.set_data_length(1);
@@ -446,6 +418,7 @@ void Cpu::sof()
 				assert(pl.get_response_status() == TLM_OK_RESPONSE);
 				qk.set_and_sync(offset);
 
+				//Saljemo komandu da pocne da obradjuje poslati deo slike
 				command = 4;
 				buf = (unsigned char*)&command;
 
@@ -475,6 +448,7 @@ void Cpu::sof()
 				offset += sc_time(CLK_PERIOD, SC_NS);
 				#endif
 
+				//Saljemo obradjeni dio slike nazad u memory
 				pl.set_address(0x81000000 + adress_row * width_frame * 3);
 				pl.set_data_length(bram_row * width_frame * 3);
 				pl.set_command(TLM_READ_COMMAND);
@@ -489,11 +463,9 @@ void Cpu::sof()
 				#else
 				offset += sc_time(CLK_PERIOD, SC_NS);
 				#endif
-				cout <<sc_time_stamp()<<" "<<"Poslao sliku iz " << tmp << " delova"<< endl;
-
 
 				tmp_sig1=sig1.read();
-				tmp++;
+				tmp_pic++;
 
 			}while(tmp_sig1 == sc_dt::SC_LOGIC_0 || adress_row == 0);
 		
@@ -502,7 +474,6 @@ void Cpu::sof()
             	send_text = true;
             }
 		}
-		//cout << "cpu: time, pre citanja iz mem: " << sc_time_stamp() << endl;
 
 		pl.set_address(0);
 		pl.set_data_length(LEN_FRAME);
@@ -511,7 +482,6 @@ void Cpu::sof()
 		assert(pl.get_response_status() == TLM_OK_RESPONSE);
 		qk.set_and_sync(offset);
 
-		//cout << "cpu: time, posle citanja iz mem: " << sc_time_stamp() << endl;
 		
 		vector<sc_dt::sc_uint<8>> frame_uint8;
 		buf = pl.get_data_ptr();
@@ -550,6 +520,12 @@ void Cpu::sof()
 			break;
 
 		frame_count += 1;
+		
+		end_time = sc_time_stamp();
+		transaction_time = end_time - start_time;
+		cout << "VREME OBRADE SLIKE: " << transaction_time << endl;
+		cout << "VREME SIMULACIJE: " << sc_time_stamp() << endl;
+
 	}
 
 	destroyAllWindows();

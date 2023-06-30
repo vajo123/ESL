@@ -12,16 +12,14 @@ using namespace sc_core;
 
 SC_MODULE(InterCon)
 {
-        public:
-                InterCon(sc_module_name name);
-                tlm_utils::simple_target_socket<InterCon> s_ic_t;
-                tlm_utils::simple_initiator_socket<InterCon> s_ic_i0;
-                tlm_utils::simple_initiator_socket<InterCon> s_ic_i1;
+    public:
+        InterCon(sc_module_name name);
+        tlm_utils::simple_target_socket<InterCon> s_ic_t;
+        tlm_utils::simple_initiator_socket<InterCon> s_ic_i0;
+        tlm_utils::simple_initiator_socket<InterCon> s_ic_i1;
 
-
-        protected:
-                void b_transport(pl_t&, sc_core::sc_time&);
+    protected:
+        void b_transport(pl_t&, sc_core::sc_time&);
 };
-
 
 #endif // INT_CON_H

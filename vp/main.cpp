@@ -11,17 +11,10 @@ int sc_main(int argc, char* argv[])
 	char* input_video = argv[1];
     char* input_titl = argv[2];
 
-    //cout << input_titl << endl;
-    //cout << input_video << endl;
-
     Cpu cpu("Cpu", input_video, input_titl);
-
     Mem memory("memory");
-
     InterCon intcon("intcon");
-
     DMA dma("dma");
-
     Ip ip("ip");
 
     ip.out_port0(cpu.in_port0);
